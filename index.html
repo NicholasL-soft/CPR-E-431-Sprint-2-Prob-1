@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integer Overflow Lab</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a2f;
+      --panel-2: #18223b;
+      --text: #eef3ff;
+      --muted: #aab6d1;
+      --accent: #70a1ff;
+      --danger: #ff6b81;
+      --good: #63d6a1;
+      --border: #2c3a5d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      background: linear-gradient(135deg, #090e1c, #101a31 55%, #0d1427);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1050px; margin: 0 auto; padding: 36px 20px 48px; }
+    header { margin-bottom: 24px; }
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: .78rem;
+    }
+    h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 8px 0 10px; }
+    .lead { color: var(--muted); max-width: 760px; line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .card {
+      background: rgba(18, 26, 47, .94);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 35px rgba(0,0,0,.2);
+    }
+    .wide { grid-column: 1 / -1; }
+    label { display: block; color: var(--muted); font-weight: 600; margin-bottom: 9px; }
+    select, input[type="number"], input[type="range"], button {
+      width: 100%;
+    }
+    select, input[type="number"] {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 1rem;
+    }
+    input[type="range"] { accent-color: var(--accent); }
+    button {
+      background: var(--accent);
+      color: #071126;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    button:hover { filter: brightness(1.08); }
+    .range-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .value { font-variant-numeric: tabular-nums; font-weight: 800; }
+    .memory {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 7px;
+      margin-top: 14px;
+    }
+    .bit {
+      text-align: center;
+      padding: 13px 4px;
+      border-radius: 8px;
+      background: #25304d;
+      border: 1px solid #3a496c;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 800;
+    }
+    .bit.on { background: #29466e; border-color: #70a1ff; }
+    .bit.sign { outline: 2px solid #d6a85f; outline-offset: 1px; }
+    .number {
+      font-size: 2.4rem;
+      font-weight: 900;
+      margin: 8px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .result { padding: 15px; border-radius: 12px; background: var(--panel-2); margin-top: 14px; line-height: 1.55; }
+    .warn { color: #ffd58a; }
+    .ok { color: var(--good); }
+    .danger { color: var(--danger); }
+    .formula {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: #0a1020;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 10px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .small { color: var(--muted); font-size: .92rem; line-height: 1.55; }
+    .quiz-option {
+      text-align: left;
+      background: #1b2744;
+      color: var(--text);
+      border: 1px solid var(--border);
+      margin-top: 8px;
+    }
+    .quiz-option.correct { border-color: var(--good); }
+    .quiz-option.wrong { border-color: var(--danger); }
+    #quizFeedback { min-height: 28px; margin-top: 12px; font-weight: 700; }
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .wide { grid-column: auto; }
+      .memory { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">Learning Sprint • Problem 1</div>
+      <h1>Integer Overflow Lab</h1>
+      <p class="lead">
+        Explore what happens when a program stores an arithmetic result in a fixed-width integer.
+        Change the bit width and input values, then watch the binary representation and signed/unsigned
+        interpretations change. This is a teaching simulation—not an exploit tool.
+      </p>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <h2>1. Choose the integer type</h2>
+        <label for="width">Fixed width</label>
+        <select id="width">
+          <option value="4">4-bit</option>
+          <option value="8" selected>8-bit</option>
+          <option value="16">16-bit</option>
+        </select>
+
+        <label for="operation" style="margin-top:16px">Operation</label>
+        <select id="operation">
+          <option value="add" selected>Add</option>
+          <option value="multiply">Multiply</option>
+        </select>
+
+        <label for="a" style="margin-top:16px">First value</label>
+        <input id="a" type="number" value="120">
+
+        <label for="b" style="margin-top:16px">Second value</label>
+        <input id="b" type="number" value="20">
+
+        <button id="calculate">Calculate</button>
+        <p class="small">Try 8-bit values such as 120 + 20. The mathematical result is 140, but a signed 8-bit integer cannot represent 140.</p>
+      </div>
+
+      <div class="card">
+        <h2>2. What is stored?</h2>
+        <div class="number" id="mathResult">140</div>
+        <div class="formula" id="formula">140 mod 256 = 140</div>
+        <div class="result">
+          <strong>Unsigned interpretation:</strong>
+          <span id="unsigned">140</span><br>
+          <strong>Signed interpretation:</strong>
+          <span id="signed">-116</span>
+        </div>
+        <div class="result" id="status"></div>
+      </div>
+
+      <div class="card wide">
+        <h2>3. Look at the bits</h2>
+        <p class="small">Each cell is one bit. For signed integers, the leftmost bit is the sign bit.</p>
+        <div class="memory" id="bits"></div>
+      </div>
+
+      <div class="card">
+        <h2>Why does wrapping happen?</h2>
+        <p class="small">
+          An <strong>n-bit unsigned</strong> integer has <strong>2ⁿ</strong> possible bit patterns,
+          representing 0 through 2ⁿ−1. Arithmetic outside that range wraps modulo 2ⁿ.
+        </p>
+        <p class="small">
+          For signed two's-complement integers, half the patterns represent negative numbers.
+          With 8 bits, the range is −128 through 127.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Quick check</h2>
+        <p class="small">Test yourself with different questions about wrapping, signed values, and bit patterns.</p>
+        <p id="quizProgress"><strong>Question 1 of 6</strong></p>
+        <p id="quizQuestion"><strong></strong></p>
+        <div id="quizOptions"></div>
+        <div id="quizFeedback"></div>
+        <div class="range-row" style="margin-top:12px">
+          <span id="quizScore">Score: 0 / 0</span>
+          <button id="nextQuestion" style="width:auto; margin-top:0; padding:10px 14px;">Next question</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const widthEl = document.getElementById("width");
+    const operationEl = document.getElementById("operation");
+    const aEl = document.getElementById("a");
+    const bEl = document.getElementById("b");
+    const mathResultEl = document.getElementById("mathResult");
+    const formulaEl = document.getElementById("formula");
+    const unsignedEl = document.getElementById("unsigned");
+    const signedEl = document.getElementById("signed");
+    const statusEl = document.getElementById("status");
+    const bitsEl = document.getElementById("bits");
+
+    function signedValue(unsigned, width) {
+      const signBit = 2 ** (width - 1);
+      const range = 2 ** width;
+      return unsigned >= signBit ? unsigned - range : unsigned;
+    }
+
+    function render() {
+      const width = Number(widthEl.value);
+      const a = Number(aEl.value) || 0;
+      const b = Number(bEl.value) || 0;
+      const operation = operationEl.value;
+      const modulus = 2 ** width;
+      const mathematical = operation === "add" ? a + b : a * b;
+      const stored = ((mathematical % modulus) + modulus) % modulus;
+      const signed = signedValue(stored, width);
+      const unsignedMax = modulus - 1;
+      const signedMin = -(2 ** (width - 1));
+      const signedMax = 2 ** (width - 1) - 1;
+
+      mathResultEl.textContent = mathematical;
+      formulaEl.textContent = `${mathematical} mod ${modulus} = ${stored}`;
+      unsignedEl.textContent = stored;
+      signedEl.textContent = signed;
+
+      const overflow = mathematical > unsignedMax || mathematical < 0;
+      const signedOverflow = mathematical < signedMin || mathematical > signedMax;
+
+      statusEl.className = "result";
+      if (signedOverflow) {
+        statusEl.innerHTML = `<span class="danger"><strong>Signed overflow!</strong></span> The mathematical result is outside the signed ${width}-bit range (${signedMin} to ${signedMax}). The same stored bits are interpreted as <strong>${signed}</strong>.`;
+      } else if (overflow) {
+        statusEl.innerHTML = `<span class="warn"><strong>Unsigned range exceeded.</strong></span> The mathematical result is outside 0 to ${unsignedMax}, so the stored value wraps to ${stored}.`;
+      } else {
+        statusEl.innerHTML = `<span class="ok"><strong>No overflow for this ${width}-bit signed example.</strong></span> The result fits in the signed range.`;
+      }
+
+      bitsEl.innerHTML = "";
+      const binary = stored.toString(2).padStart(width, "0");
+      [...binary].forEach((bit, index) => {
+        const cell = document.createElement("div");
+        cell.className = "bit" + (bit === "1" ? " on" : "") + (index === 0 ? " sign" : "");
+        cell.textContent = bit;
+        bitsEl.appendChild(cell);
+      });
+    }
+
+    document.getElementById("calculate").addEventListener("click", () => {
+      render();
+      const button = document.getElementById("calculate");
+      const original = button.textContent;
+      button.textContent = "Calculated ✓";
+      setTimeout(() => button.textContent = original, 900);
+    });
+    [widthEl, operationEl, aEl, bEl].forEach(el => el.addEventListener("input", render));
+
+    const quizQuestions = [
+      {
+        question: "What is 127 + 1 as a signed 8-bit integer?",
+        options: ["128", "−128", "255", "0"],
+        answer: 1,
+        explanation: "127 is 01111111. Adding 1 produces 10000000, which is −128 in signed 8-bit two's complement."
+      },
+      {
+        question: "What is 255 + 1 when stored as an 8-bit unsigned integer?",
+        options: ["256", "−1", "0", "128"],
+        answer: 2,
+        explanation: "An 8-bit unsigned integer wraps modulo 256, so 256 becomes 0."
+      },
+      {
+        question: "What is the unsigned value of the 8-bit pattern 10000000?",
+        options: ["128", "−128", "127", "255"],
+        answer: 0,
+        explanation: "Unsigned interpretation treats the leftmost bit as 128, so 10000000 is 128."
+      },
+      {
+        question: "What is the signed value of the 8-bit pattern 11111111?",
+        options: ["255", "−255", "−1", "1"],
+        answer: 2,
+        explanation: "In signed two's complement, 11111111 represents −1."
+      },
+      {
+        question: "How many different values can an unsigned 4-bit integer represent?",
+        options: ["4", "8", "15", "16"],
+        answer: 3,
+        explanation: "Four bits create 2⁴ = 16 possible patterns, representing 0 through 15."
+      },
+      {
+        question: "Which signed 8-bit range is correct?",
+        options: ["0 to 255", "−128 to 127", "−127 to 128", "−255 to 255"],
+        answer: 1,
+        explanation: "Signed 8-bit two's complement ranges from −128 through 127."
+      }
+    ];
+
+    let quizOrder = [];
+    let quizIndex = 0;
+    let quizAnswered = false;
+    let quizCorrect = 0;
+    let quizAttempted = 0;
+
+    function shuffle(array) {
+      return [...array].sort(() => Math.random() - 0.5);
+    }
+
+    function startQuiz() {
+      quizOrder = shuffle(quizQuestions);
+      quizIndex = 0;
+      quizAnswered = false;
+      quizCorrect = 0;
+      quizAttempted = 0;
+      showQuestion();
+    }
+
+    function showQuestion() {
+      const q = quizOrder[quizIndex];
+      document.getElementById("quizProgress").innerHTML =
+        `<strong>Question ${quizIndex + 1} of ${quizOrder.length}</strong>`;
+      document.getElementById("quizQuestion").innerHTML = `<strong>${q.question}</strong>`;
+      const options = document.getElementById("quizOptions");
+      options.innerHTML = "";
+      q.options.forEach((option, index) => {
+        const button = document.createElement("button");
+        button.className = "quiz-option";
+        button.textContent = option;
+        button.addEventListener("click", () => answerQuestion(index));
+        options.appendChild(button);
+      });
+      document.getElementById("quizFeedback").textContent = "";
+      document.getElementById("quizFeedback").className = "";
+      document.getElementById("nextQuestion").textContent =
+        quizIndex === quizOrder.length - 1 ? "New quiz" : "Next question";
+      quizAnswered = false;
+      updateScore();
+    }
+
+    function answerQuestion(selected) {
+      if (quizAnswered) return;
+      quizAnswered = true;
+      quizAttempted++;
+      const q = quizOrder[quizIndex];
+      const buttons = document.querySelectorAll(".quiz-option");
+      buttons.forEach((button, index) => {
+        if (index === q.answer) button.classList.add("correct");
+        if (index === selected && selected !== q.answer) button.classList.add("wrong");
+      });
+
+      const feedback = document.getElementById("quizFeedback");
+      if (selected === q.answer) {
+        quizCorrect++;
+        feedback.textContent = "Correct! " + q.explanation;
+        feedback.className = "ok";
+      } else {
+        feedback.textContent = "Not quite. " + q.explanation;
+        feedback.className = "danger";
+      }
+      updateScore();
+    }
+
+    function updateScore() {
+      document.getElementById("quizScore").textContent =
+        `Score: ${quizCorrect} / ${quizAttempted}`;
+    }
+
+    document.getElementById("nextQuestion").addEventListener("click", () => {
+      if (quizIndex === quizOrder.length - 1) {
+        startQuiz();
+      } else {
+        quizIndex++;
+        showQuestion();
+      }
+    });
+
+    startQuiz();
+
+    render();
+  </script>
+</body>
+</html>
